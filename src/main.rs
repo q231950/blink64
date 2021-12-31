@@ -5,6 +5,7 @@
 
 #![no_std]
 #![no_main]
+#![feature(abi_avr_interrupt)]
 
 extern crate panic_halt;
 
@@ -15,6 +16,9 @@ use atmega168_hal::clock::*;
 use atmega168_hal::usart::Usart;
 use atmega168_hal::usart::Baudrate;
 use atmega168_hal::usart::BaudrateExt;
+use core::mem;
+
+static mut VALUE: mem::MaybeUninit<[i32; 8]> = mem::MaybeUninit::uninit();
 
 #[atmega168_hal::entry]
 fn main() -> ! {
@@ -25,17 +29,8 @@ fn main() -> ! {
     let mut port_c = dp.PORTC.split();
     let mut port_d = dp.PORTD.split();
 
-    let baudrate: Baudrate<MHz8> = 57600_u32.into_baudrate();
-    let mut serial = Usart::new(
-        dp.USART0,
-        port_d.pd0,
-        port_d.pd1.into_output(&mut port_d.ddr),
-        baudrate,
-        );
+    //let b = nb::block!(serial.read()).void_unwrap();
 
-    let b = nb::block!(serial.read()).void_unwrap();
-
-    ufmt::uwriteln!(&mut serial, "Got {}\r", b).void_unwrap();
 
     // counter clock pin
     let mut clock = port_b.pb1.into_output(&mut port_b.ddr);
@@ -60,12 +55,17 @@ fn main() -> ! {
 
     // value table
     let value:[i32; 8];
-    if b as char == 'x' {
+    if 'b' as char == 'x' {
         value = [1,3,7,15,31,63,127,255];
     } else {
         value = [255,127,63,31,15,7,3,1];
     }
     //let value:[i32; 8] = [1,2,3,4,255,160,97,888];
+    //
+
+    unsafe {
+        avr_device::interrupt::enable();
+    }
 
     loop {
 
@@ -123,4 +123,23 @@ fn main() -> ! {
             reset_cols.set_high().void_unwrap();
         }
     }
+}
+
+#[avr_device::interrupt(atmega168)]
+fn USART_RX() {
+    let dp = atmega168_hal::pac::Peripherals::take().unwrap();
+
+    let mut port_d = dp.PORTD.split();
+
+    let baudrate: Baudrate<MHz8> = 57600_u32.into_baudrate();
+    let mut serial = Usart::new(
+        dp.USART0,
+        port_d.pd0,
+        port_d.pd1.into_output(&mut port_d.ddr),
+        baudrate,
+        );
+
+    let b = nb::block!(serial.read()).void_unwrap();
+
+    ufmt::uwriteln!(&mut serial, "Got {}\r", b).void_unwrap();
 }

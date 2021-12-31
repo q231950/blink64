@@ -16,6 +16,7 @@ name = "avr-atmega168"
 version = "0.1.0"
 dependencies = [
  "atmega168-hal",
+ "avr-device",
  "nb 0.1.3",
  "panic-halt",
  "ufmt",
@@ -23,9 +24,9 @@ dependencies = [
 
 [[package]]
 name = "avr-device"
-version = "0.3.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "63801a7acebed9c5ad3d89a9d3baa394fdd4de5e3a9a2384f9659fa1dc7fa823"
+checksum = "4eb440a38bef22cef233b3eb46ef13e588eb8dcc70a1bdce3f00ebc6bf6b48dd"
 dependencies = [
  "avr-device-macros",
  "bare-metal",
@@ -35,9 +36,9 @@ dependencies = [
 
 [[package]]
 name = "avr-device-macros"
-version = "0.3.0"
+version = "0.3.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "bdd9b528ac23fbb2553d35a7cc11bb857df30a9d2786c3686d1e8bbda9a7b4f8"
+checksum = "2c62997db86a92e73b68ab491d4379e1ddb12e94a9eb542180bc6b60f0e09f8b"
 dependencies = [
  "proc-macro2",
  "quote",

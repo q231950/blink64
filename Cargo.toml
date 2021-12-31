@@ -17,6 +17,10 @@ ufmt = "0.1.0"
 git = "https://github.com/Rahix/avr-hal"
 rev = "885e8ec6d6d2fe34f26a1e2697a99f41092f0985"
 
+[dependencies.avr-device]
+version = "0.3.1"
+features = ["atmega168"]
+
 [profile.dev]
 panic = "abort"
 lto = true
