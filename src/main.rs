@@ -6,6 +6,7 @@
 #![no_std]
 #![no_main]
 #![feature(abi_avr_interrupt)]
+#![feature(maybe_uninit_extra)]
 
 extern crate panic_halt;
 
@@ -18,7 +19,7 @@ use atmega168_hal::usart::Baudrate;
 use atmega168_hal::usart::BaudrateExt;
 use core::mem;
 
-static mut VALUE: mem::MaybeUninit<[i32; 8]> = mem::MaybeUninit::uninit();
+static mut VALUE: mem::MaybeUninit::<[i32; 8]> = mem::MaybeUninit::<[i32; 8]>::uninit();
 
 #[atmega168_hal::entry]
 fn main() -> ! {
@@ -53,21 +54,14 @@ fn main() -> ! {
 
     let mut delay = Delay::<MHz8>::new();
 
-    // value table
-    let value:[i32; 8];
-    if 'b' as char == 'x' {
-        value = [1,3,7,15,31,63,127,255];
-    } else {
-        value = [255,127,63,31,15,7,3,1];
-    }
-    //let value:[i32; 8] = [1,2,3,4,255,160,97,888];
-    //
 
     unsafe {
         avr_device::interrupt::enable();
     }
 
     loop {
+
+        let value = unsafe { VALUE.assume_init() };
 
         reset_cols.set_low().void_unwrap();
 
@@ -142,4 +136,15 @@ fn USART_RX() {
     let b = nb::block!(serial.read()).void_unwrap();
 
     ufmt::uwriteln!(&mut serial, "Got {}\r", b).void_unwrap();
+
+    unsafe {
+        if b as char == 'x' {
+            VALUE.write([1,3,7,15,31,63,127,255]);
+        } else {
+            VALUE.write([255,127,63,31,15,7,3,1]);
+        }
+    }
+
+    //let value:[i32; 8] = [1,2,3,4,255,160,97,888];
+    //
 }
