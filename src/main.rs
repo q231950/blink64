@@ -11,22 +11,20 @@
 
 extern crate panic_halt;
 
-use atmega168_hal::prelude::*;
-use atmega168_hal::delay::Delay;
-use atmega168_hal::port::Pin;
+use core::mem;
 use atmega168_hal::clock::*;
-use atmega168_hal::usart::Usart;
-use atmega168_hal::usart::Baudrate;
-use atmega168_hal::usart::BaudrateExt;
-use atmega168_hal::*;
+use atmega168_hal::delay::Delay;
 use atmega168_hal::pac::USART0;
-use atmega168_hal::usart::Event::RxComplete;
 use atmega168_hal::port::portd::PD0;
 use atmega168_hal::port::portd::PD1;
 use atmega168_hal::port::mode::Floating;
 use atmega168_hal::port::mode::Input;
 use atmega168_hal::port::mode::Output;
-use core::mem;
+use atmega168_hal::prelude::*;
+use atmega168_hal::usart::Baudrate;
+use atmega168_hal::usart::BaudrateExt;
+use atmega168_hal::usart::Usart;
+use atmega168_hal::usart::Event::RxComplete;
 
 static mut VALUE: mem::MaybeUninit::<[i32; 8]> = mem::MaybeUninit::<[i32; 8]>::uninit();
 static mut SERIAL: mem::MaybeUninit::<Usart<USART0, PD0<Input<Floating>>, PD1<Output>, MHz8>> = mem::MaybeUninit::<Usart<USART0, PD0<Input<Floating>>, PD1<Output>, MHz8>>::uninit();
@@ -40,25 +38,24 @@ fn main() -> ! {
     let mut port_c = dp.PORTC.split();
     let mut port_d = dp.PORTD.split();
 
-    let baudrate: Baudrate<MHz8> = 57600_u32.into_baudrate();
     // USART
+    let baudrate: Baudrate<MHz8> = 57600_u32.into_baudrate();
     let usart = dp.USART0;
     usart.ucsr0b.write(|w| w.rxcie0().set_bit());
 
     unsafe {
-
         let mut s = Usart::new(
             usart,
             port_d.pd0,
             port_d.pd1.into_output(&mut port_d.ddr),
             baudrate,
             );
+        // Listen for the interrupt that notifies about a complete receive event of the usart
         s.listen(RxComplete);
-        SERIAL.write(s
-                    );
 
+        // Assign the global usart serial connection
+        SERIAL.write(s);
     }
-
 
     // counter clock pin
     let mut clock = port_b.pb1.into_output(&mut port_b.ddr);
@@ -91,13 +88,10 @@ fn main() -> ! {
     }
 
     loop {
-
-        let value = unsafe { VALUE.assume_init() };
-
         reset_cols.set_low().void_unwrap();
 
         let c = column as usize;
-
+        let value = unsafe { VALUE.assume_init() };
 
         if 1 == (1 & (value[c] >> 0)) {
             row_1.set_low().void_unwrap();
@@ -136,7 +130,6 @@ fn main() -> ! {
         row_8.set_high().void_unwrap();
 
         clock.set_low().void_unwrap();
-
         clock.set_high().void_unwrap();
 
         delay.delay_us(20u32);
@@ -162,6 +155,8 @@ fn USART_RX() {
     unsafe {
         if b as char == 'x' {
             VALUE.write([1,3,7,15,31,63,127,255]);
+        } else if b as char == '1' {
+            VALUE.write([0,0,0,254,254,0,0,0]);
         } else {
             VALUE.write([255,127,63,31,15,7,3,1]);
         }
