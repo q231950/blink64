@@ -7,6 +7,7 @@
 #![no_main]
 #![feature(abi_avr_interrupt)]
 #![feature(maybe_uninit_extra)]
+#![feature(maybe_uninit_ref)]
 
 extern crate panic_halt;
 
@@ -17,9 +18,18 @@ use atmega168_hal::clock::*;
 use atmega168_hal::usart::Usart;
 use atmega168_hal::usart::Baudrate;
 use atmega168_hal::usart::BaudrateExt;
+use atmega168_hal::*;
+use atmega168_hal::pac::USART0;
+use atmega168_hal::usart::Event::RxComplete;
+use atmega168_hal::port::portd::PD0;
+use atmega168_hal::port::portd::PD1;
+use atmega168_hal::port::mode::Floating;
+use atmega168_hal::port::mode::Input;
+use atmega168_hal::port::mode::Output;
 use core::mem;
 
 static mut VALUE: mem::MaybeUninit::<[i32; 8]> = mem::MaybeUninit::<[i32; 8]>::uninit();
+static mut SERIAL: mem::MaybeUninit::<Usart<USART0, PD0<Input<Floating>>, PD1<Output>, MHz8>> = mem::MaybeUninit::<Usart<USART0, PD0<Input<Floating>>, PD1<Output>, MHz8>>::uninit();
 
 #[atmega168_hal::entry]
 fn main() -> ! {
@@ -30,7 +40,24 @@ fn main() -> ! {
     let mut port_c = dp.PORTC.split();
     let mut port_d = dp.PORTD.split();
 
-    //let b = nb::block!(serial.read()).void_unwrap();
+    let baudrate: Baudrate<MHz8> = 57600_u32.into_baudrate();
+    // USART
+    let usart = dp.USART0;
+    usart.ucsr0b.write(|w| w.rxcie0().set_bit());
+
+    unsafe {
+
+        let mut s = Usart::new(
+            usart,
+            port_d.pd0,
+            port_d.pd1.into_output(&mut port_d.ddr),
+            baudrate,
+            );
+        s.listen(RxComplete);
+        SERIAL.write(s
+                    );
+
+    }
 
 
     // counter clock pin
@@ -57,6 +84,10 @@ fn main() -> ! {
 
     unsafe {
         avr_device::interrupt::enable();
+    }
+
+    unsafe {
+        VALUE.write([1,3,1,1,31,6,17,55]);
     }
 
     loop {
@@ -121,17 +152,8 @@ fn main() -> ! {
 
 #[avr_device::interrupt(atmega168)]
 fn USART_RX() {
-    let dp = atmega168_hal::pac::Peripherals::take().unwrap();
 
-    let mut port_d = dp.PORTD.split();
-
-    let baudrate: Baudrate<MHz8> = 57600_u32.into_baudrate();
-    let mut serial = Usart::new(
-        dp.USART0,
-        port_d.pd0,
-        port_d.pd1.into_output(&mut port_d.ddr),
-        baudrate,
-        );
+    let mut serial = unsafe { SERIAL.assume_init_mut() };
 
     let b = nb::block!(serial.read()).void_unwrap();
 
