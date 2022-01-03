@@ -26,7 +26,7 @@ use atmega168_hal::usart::BaudrateExt;
 use atmega168_hal::usart::Usart;
 use atmega168_hal::usart::Event::RxComplete;
 
-static mut VALUE: mem::MaybeUninit::<[i32; 8]> = mem::MaybeUninit::<[i32; 8]>::uninit();
+static mut VALUE: mem::MaybeUninit::<[u8; 8]> = mem::MaybeUninit::<[u8; 8]>::uninit();
 static mut SERIAL: mem::MaybeUninit::<Usart<USART0, PD0<Input<Floating>>, PD1<Output>, MHz8>> = mem::MaybeUninit::<Usart<USART0, PD0<Input<Floating>>, PD1<Output>, MHz8>>::uninit();
 
 #[atmega168_hal::entry]
@@ -67,14 +67,14 @@ fn main() -> ! {
     let mut column:i8 = 0;
 
     // outputs
-    let mut row_1 = port_c.pc0.into_output(&mut port_c.ddr);
-    let mut row_2 = port_c.pc1.into_output(&mut port_c.ddr);
-    let mut row_3 = port_d.pd2.into_output(&mut port_d.ddr);
-    let mut row_4 = port_d.pd3.into_output(&mut port_d.ddr);
-    let mut row_5 = port_d.pd4.into_output(&mut port_d.ddr);
-    let mut row_6 = port_d.pd5.into_output(&mut port_d.ddr);
-    let mut row_7 = port_d.pd6.into_output(&mut port_d.ddr);
-    let mut row_8 = port_d.pd7.into_output(&mut port_d.ddr);
+    let mut row_8 = port_c.pc0.into_output(&mut port_c.ddr);
+    let mut row_7 = port_c.pc1.into_output(&mut port_c.ddr);
+    let mut row_6 = port_d.pd2.into_output(&mut port_d.ddr);
+    let mut row_5 = port_d.pd3.into_output(&mut port_d.ddr);
+    let mut row_4 = port_d.pd4.into_output(&mut port_d.ddr);
+    let mut row_3 = port_d.pd5.into_output(&mut port_d.ddr);
+    let mut row_2 = port_d.pd6.into_output(&mut port_d.ddr);
+    let mut row_1 = port_d.pd7.into_output(&mut port_d.ddr);
 
     let mut delay = Delay::<MHz8>::new();
 
@@ -148,19 +148,22 @@ fn USART_RX() {
 
     let mut serial = unsafe { SERIAL.assume_init_mut() };
 
-    let b = nb::block!(serial.read()).void_unwrap();
+    let byte_0 = serial.read_byte();
+    let byte_1 = serial.read_byte();
+    let byte_2 = serial.read_byte();
+    let byte_3 = serial.read_byte();
+    let byte_4 = serial.read_byte();
+    let byte_5 = serial.read_byte();
+    let byte_6 = serial.read_byte();
+    let byte_7 = serial.read_byte();
 
-    ufmt::uwriteln!(&mut serial, "Got {}\r", b).void_unwrap();
+    //ufmt::uwriteln!(&mut serial, "Got {}\r", b).void_unwrap();
 
     unsafe {
-        if b as char == 'x' {
-            VALUE.write([1,3,7,15,31,63,127,255]);
-        } else if b as char == '1' {
-            VALUE.write([0,0,0,254,254,0,0,0]);
-        } else {
-            VALUE.write([255,127,63,31,15,7,3,1]);
-        }
+        VALUE.write([byte_0, byte_1, byte_2, byte_3, byte_4, byte_5, byte_6, byte_7]);
     }
+   
+    serial.flush();
 
     //let value:[i32; 8] = [1,2,3,4,255,160,97,888];
     //
